@@ -1,0 +1,359 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#10302b">
+<title>Le manager idéal, vu par nous</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,700;12..96,800&family=Kalam:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app" id="app">
+  <header class="entete">
+    <span class="marque" id="marque"></span>
+    <span class="pastille-session"><i class="lien" id="lien" title="Connexion"></i><span id="lib-session"></span></span>
+  </header>
+  <main id="contenu" aria-live="polite"></main>
+  <p class="note-bas">Vos réponses sont anonymes : rien ne permet de vous identifier.</p>
+</div>
+
+<script src="config.js"></script>
+<script src="shared.js"></script>
+<script>
+(function () {
+  "use strict";
+  const MI = window.MI, CFG = window.CONFIG, h = MI.h;
+  const ctx = MI.contexte();
+  const contenu = document.getElementById("contenu");
+
+  document.getElementById("marque").textContent = CFG.TITRE;
+  document.getElementById("lib-session").textContent =
+    (ctx.session !== "defaut" ? ctx.session + ", " : "") + CFG.MOMENTS[ctx.moment];
+
+  let donnees = null;       // dernières données reçues du service
+  let vueCourante = null;   // vue affichée (la saisie n'est reconstruite que si la vue change)
+  let sections = {};        // sections de résultats
+  let zones = {};           // conteneurs des résultats
+  let echecs = 0;
+
+  const cleLocale = function (bloc) { return "mi:" + ctx.session + ":" + ctx.moment + ":" + bloc; };
+  const aRepondu = function (bloc) { return MI.lire(cleLocale(bloc)) === "1"; };
+
+  function voyant(ok) { document.getElementById("lien").className = "lien" + (ok ? "" : " hors"); }
+
+  function messageErreur(code) {
+    const m = {
+      saisie_fermee: "La saisie est terminée. Suivez les résultats sur l’écran de la salle.",
+      plafond_atteint: "Le nombre maximum de réponses est atteint pour cette session. Prévenez l’animateur.",
+      code_invalide: "Accès refusé."
+    };
+    return m[code] || "Vos réponses n’ont pas pu être enregistrées. Réessayez dans un instant.";
+  }
+
+  function pas(i, n) {
+    const barres = [];
+    for (let k = 0; k < n; k++) barres.push(h("i", { class: k <= i ? "fait" : "" }));
+    return h("div", { class: "pas", "aria-hidden": "true" }, barres);
+  }
+
+  // ---------------------------------------------------------------- Saisie A : mots, métaphore, curseurs
+
+  function construireSaisieA() {
+    const rep = { mots: ["", "", ""], metaphore: "", curseurs: {} };
+    const racine = h("div");
+    let ecran = 0, envoi = false, erreur = "";
+
+    function dessiner() {
+      racine.replaceChildren();
+      const carte = h("section", { class: "feuille" }, pas(ecran, 3));
+      racine.append(carte);
+      let suivant, retour;
+
+      if (ecran === 0) {
+        const q = CFG.QUESTIONS.mots;
+        carte.append(h("h2", null, q.titre), h("p", { class: "aide" }, q.aide));
+        carte.append(h("div", { class: "champs" }, rep.mots.map(function (v, i) {
+          return h("input", {
+            type: "text", maxlength: "30", value: v, placeholder: q.placeholders[i], "aria-label": "Mot " + (i + 1),
+            autocomplete: "off", autocapitalize: "none", enterkeyhint: "next",
+            oninput: function (e) { rep.mots[i] = e.target.value; maj(); }
+          });
+        })));
+        suivant = h("button", { class: "btn", type: "button", onclick: function () { ecran = 1; erreur = ""; dessiner(); } }, "Continuer");
+        carte.append(h("div", { class: "actions" }, suivant));
+        var maj = function () { suivant.disabled = !rep.mots.some(function (m) { return m.trim(); }); };
+        maj();
+      } else if (ecran === 1) {
+        const q = CFG.QUESTIONS.metaphore;
+        const compteur = h("div", { class: "compteur-car" }, rep.metaphore.length + " / 160");
+        carte.append(h("h2", null, q.titre), h("p", { class: "aide" }, q.aide));
+        carte.append(h("div", { class: "champs" },
+          h("textarea", {
+            maxlength: "160", placeholder: q.placeholder, "aria-label": "Votre métaphore",
+            oninput: function (e) { rep.metaphore = e.target.value; compteur.textContent = e.target.value.length + " / 160"; maj(); }
+          }, rep.metaphore),
+          compteur));
+        retour = h("button", { class: "btn secondaire", type: "button", onclick: function () { ecran = 0; dessiner(); } }, "Retour");
+        suivant = h("button", { class: "btn", type: "button", onclick: function () { ecran = 2; erreur = ""; dessiner(); } }, "Continuer");
+        carte.append(h("div", { class: "actions" }, retour, suivant));
+        var maj = function () { suivant.disabled = rep.metaphore.trim().length < 3; };
+        maj();
+      } else {
+        const q = CFG.QUESTIONS.curseurs;
+        carte.append(h("h2", null, q.titre), h("p", { class: "aide" }, q.aide));
+        q.items.forEach(function (it) {
+          const place = rep.curseurs[it.cle] !== undefined;
+          const rappel = h("div", { class: "rappel" }, place ? "" : "Touchez la ligne pour placer le curseur.");
+          const poser = function (e) {
+            rep.curseurs[it.cle] = Number(e.target.value);
+            e.target.classList.remove("vide");
+            rappel.textContent = "";
+            maj();
+          };
+          const curseur = h("input", {
+            type: "range", min: "1", max: "10", step: "1", class: place ? "" : "vide",
+            "aria-label": it.gauche + " ou " + it.droite,
+            oninput: poser, onchange: poser, onpointerup: poser
+          });
+          curseur.value = place ? rep.curseurs[it.cle] : 5;
+          carte.append(h("div", { class: "curseur-saisie" },
+            h("div", { class: "textes" }, h("span", null, it.gauche), h("span", null, it.droite)), curseur, rappel));
+        });
+        if (erreur) carte.append(h("div", { class: "message erreur", role: "alert" }, erreur));
+        retour = h("button", { class: "btn secondaire", type: "button", disabled: envoi, onclick: function () { ecran = 1; dessiner(); } }, "Retour");
+        suivant = h("button", { class: "btn", type: "button", onclick: envoyer }, envoi ? "Envoi en cours…" : "Envoyer mes réponses");
+        carte.append(h("div", { class: "actions" }, retour, suivant));
+        var maj = function () {
+          suivant.disabled = envoi || Object.keys(rep.curseurs).length < q.items.length;
+        };
+        maj();
+      }
+    }
+
+    async function envoyer() {
+      if (envoi) return;
+      envoi = true; erreur = ""; dessiner();
+      try {
+        const r = await MI.appelPost({ action: "repondre", session: ctx.session, moment: ctx.moment, bloc: "A", reponses: rep });
+        if (r && r.ok) { MI.ecrire(cleLocale("A"), "1"); envoi = false; majVue(); return; }
+        erreur = messageErreur(r && r.erreur);
+        if (r && r.erreur === "saisie_fermee") rafraichir();
+      } catch (e) {
+        erreur = "Envoi impossible pour le moment. Vérifiez votre connexion puis réessayez : vos réponses sont conservées.";
+      }
+      envoi = false; dessiner();
+    }
+
+    dessiner();
+    return racine;
+  }
+
+  // ---------------------------------------------------------------- Saisie B : priorités, situation redoutée
+
+  function melanger(liste) {
+    const a = liste.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const t = a[i]; a[i] = a[j]; a[j] = t;
+    }
+    return a;
+  }
+
+  function construireSaisieB() {
+    const q = CFG.ATTENTES;
+    const affichage = melanger(q.priorites.items);   // ordre aléatoire par téléphone : évite le biais de position
+    const rep = { priorites: [], situation: "" };
+    const racine = h("div");
+    let ecran = 0, envoi = false, erreur = "";
+
+    function dessiner() {
+      racine.replaceChildren();
+      const carte = h("section", { class: "feuille" }, pas(ecran, 2));
+      racine.append(carte);
+
+      if (ecran === 0) {
+        carte.append(h("h2", null, q.priorites.titre), h("p", { class: "aide" }, q.priorites.aide));
+        const liste = h("div", { class: "liste-choix" });
+        const suivant = h("button", { class: "btn", type: "button", onclick: function () { ecran = 1; erreur = ""; dessiner(); } }, "Continuer");
+        const raz = h("button", { class: "btn secondaire", type: "button", onclick: function () { rep.priorites = []; tracer(); } }, "Recommencer");
+        const tracer = function () {
+          liste.replaceChildren();
+          affichage.forEach(function (label) {
+            const i = rep.priorites.indexOf(label);
+            liste.append(h("button", {
+              class: "choix", type: "button", "aria-pressed": i >= 0 ? "true" : "false",
+              onclick: function () {
+                if (rep.priorites.indexOf(label) >= 0) rep.priorites.splice(rep.priorites.indexOf(label), 1);
+                else rep.priorites.push(label);
+                tracer();
+              }
+            }, h("span", { class: "rang" }, i >= 0 ? i + 1 : ""), h("span", null, label)));
+          });
+          suivant.disabled = rep.priorites.length < affichage.length;
+          raz.disabled = rep.priorites.length === 0;
+        };
+        carte.append(liste, h("div", { class: "actions" }, raz, suivant));
+        tracer();
+      } else {
+        const compteur = h("div", { class: "compteur-car" }, rep.situation.length + " / 300");
+        carte.append(h("h2", null, q.situation.titre), h("p", { class: "aide" }, q.situation.aide));
+        carte.append(h("div", { class: "champs" },
+          h("textarea", {
+            maxlength: "300", placeholder: q.situation.placeholder, "aria-label": "Situation redoutée",
+            oninput: function (e) { rep.situation = e.target.value; compteur.textContent = e.target.value.length + " / 300"; maj(); }
+          }, rep.situation),
+          compteur));
+        if (erreur) carte.append(h("div", { class: "message erreur", role: "alert" }, erreur));
+        const retour = h("button", { class: "btn secondaire", type: "button", disabled: envoi, onclick: function () { ecran = 0; dessiner(); } }, "Retour");
+        const envoyerBtn = h("button", { class: "btn", type: "button", onclick: envoyer }, envoi ? "Envoi en cours…" : "Envoyer mes réponses");
+        carte.append(h("div", { class: "actions" }, retour, envoyerBtn));
+        var maj = function () { envoyerBtn.disabled = envoi || rep.situation.trim().length < 3; };
+        maj();
+      }
+    }
+
+    async function envoyer() {
+      if (envoi) return;
+      envoi = true; erreur = ""; dessiner();
+      try {
+        const r = await MI.appelPost({ action: "repondre", session: ctx.session, moment: ctx.moment, bloc: "B", reponses: rep });
+        if (r && r.ok) { MI.ecrire(cleLocale("B"), "1"); envoi = false; majVue(); return; }
+        erreur = messageErreur(r && r.erreur);
+        if (r && r.erreur === "saisie_fermee") rafraichir();
+      } catch (e) {
+        erreur = "Envoi impossible pour le moment. Vérifiez votre connexion puis réessayez : vos réponses sont conservées.";
+      }
+      envoi = false; dessiner();
+    }
+
+    dessiner();
+    return racine;
+  }
+
+  // ---------------------------------------------------------------- Écrans d'attente et de résultats
+
+  function carteAttente(titre, texte) {
+    return h("section", { class: "feuille attente" },
+      h("div", { class: "coche", "aria-hidden": "true" }, "✓"), h("h2", null, titre), h("p", { class: "aide" }, texte));
+  }
+
+  function section(cle, titre, sousTexte, classeZone) {
+    const zone = h("div", { class: classeZone || "" });
+    zones[cle] = zone;
+    sections[cle] = h("section", { class: "section-resultats", hidden: true },
+      h("h2", null, titre), sousTexte ? h("p", { class: "meta" }, sousTexte) : null, zone);
+    return sections[cle];
+  }
+
+  function sectionsA() {
+    return [
+      section("mots", "Les mots du groupe", CFG.QUESTIONS.mots.titre, "nuage"),
+      section("meta", "Les images du manager idéal", CFG.QUESTIONS.metaphore.titre, "murs"),
+      section("cur", "Où le groupe place ses curseurs", "Chaque rond est une réponse. Le triangle indique la moyenne du groupe.", "")
+    ];
+  }
+
+  function construireVue(v) {
+    sections = {}; zones = {};
+    contenu.replaceChildren();
+    if (v === "saisieA") contenu.append(construireSaisieA());
+    else if (v === "saisieB") contenu.append(construireSaisieB());
+    else if (v === "attenteA") {
+      contenu.append(carteAttente("C’est envoyé, merci", "Regardez l’écran de la salle : les résultats du groupe seront dévoilés étape par étape."));
+    } else if (v === "resultatsA" || v === "resultatsA_tard") {
+      if (v === "resultatsA_tard") {
+        contenu.append(h("div", { class: "message info" }, "La saisie est terminée. Suivez ici les résultats du groupe."));
+      }
+      sectionsA().forEach(function (s) { contenu.append(s); });
+    } else if (v === "attenteB") {
+      contenu.append(carteAttente("C’est envoyé, merci", "Les attentes du groupe s’afficheront quand l’animateur les dévoilera."));
+      sectionsA().forEach(function (s) { contenu.append(s); });
+    } else if (v === "synthese") {
+      const portrait = h("section", { class: "section-resultats" });
+      zones.portrait = portrait;
+      contenu.append(portrait,
+        section("prio", "Les attentes du groupe", CFG.ATTENTES.priorites.titre, ""),
+        section("sit", "Les situations redoutées", CFG.ATTENTES.situation.titre, "murs"));
+      sectionsA().forEach(function (s) { contenu.append(s); });
+    }
+  }
+
+  function choisirVue() {
+    const e = donnees.etape;
+    if (e === 0) return aRepondu("A") ? "attenteA" : "saisieA";
+    if (e <= 3) return aRepondu("A") ? "resultatsA" : "resultatsA_tard";
+    if (e === 4) return aRepondu("B") ? "attenteB" : "saisieB";
+    return "synthese";
+  }
+
+  function majResultats() {
+    const e = donnees.etape, A = donnees.A || [], B = donnees.B || [];
+    if (sections.mots) {
+      sections.mots.hidden = e < 1;
+      if (e >= 1) MI.rendreNuage(zones.mots, MI.compterMots(A.map(function (r) { return r.mots; })));
+    }
+    if (sections.meta) {
+      sections.meta.hidden = e < 2;
+      if (e >= 2) MI.rendrePostits(zones.meta, A.map(function (r) { return r.metaphore; }).filter(Boolean), "Les images arrivent…");
+    }
+    if (sections.cur) {
+      sections.cur.hidden = e < 3;
+      if (e >= 3) MI.rendreCurseurs(zones.cur, [{ nom: "Le groupe", couleur: "#ffd54a", valeurs: MI.valeursCurseurs(A) }]);
+    }
+    if (sections.prio) {
+      MI.rendrePriorites(zones.prio, B.map(function (r) { return r.priorites; }));
+      sections.prio.hidden = false;
+    }
+    if (sections.sit) {
+      MI.rendrePostits(zones.sit, B.map(function (r) { return r.situation; }).filter(Boolean), "Les situations arrivent…");
+      sections.sit.hidden = false;
+    }
+    if (zones.portrait) {
+      const sig = JSON.stringify([A, B]);
+      if (zones.portrait._sig !== sig) {
+        zones.portrait._sig = sig;
+        zones.portrait.replaceChildren(MI.construirePortrait(A, B));
+      }
+    }
+  }
+
+  function majVue() {
+    if (!donnees) return;
+    const v = choisirVue();
+    if (v !== vueCourante) { vueCourante = v; construireVue(v); }
+    majResultats();
+  }
+
+  // ---------------------------------------------------------------- Synchronisation
+
+  function indisponible(texte) {
+    vueCourante = null;
+    contenu.replaceChildren(h("section", { class: "feuille attente" },
+      h("h2", null, "Service indisponible"), h("p", { class: "aide" }, texte)));
+  }
+
+  async function rafraichir() {
+    try {
+      const d = await MI.appelGet({ action: "donnees", session: ctx.session, moment: ctx.moment });
+      if (!d || !d.ok) throw new Error((d && d.erreur) || "reponse");
+      donnees = d; echecs = 0; voyant(true); majVue();
+    } catch (e) {
+      if (e.code === "config") { indisponible("La page n’est pas encore reliée au service de collecte. Prévenez l’animateur."); return; }
+      echecs++; voyant(false);
+      if (!donnees && echecs >= 3) indisponible("Impossible de joindre le service. Vérifiez votre connexion ou prévenez l’animateur.");
+    }
+  }
+
+  contenu.append(h("section", { class: "feuille attente" }, h("p", { class: "aide" }, "Connexion en cours…")));
+  rafraichir();
+  setInterval(function () { if (!document.hidden) rafraichir(); }, 5000);
+  document.addEventListener("visibilitychange", function () { if (!document.hidden) rafraichir(); });
+  window.addEventListener("online", rafraichir);
+})();
+</script>
+</body>
+</html>

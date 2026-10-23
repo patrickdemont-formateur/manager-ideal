@@ -1,0 +1,399 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#10302b">
+<title>Animateur : le manager idéal, vu par nous</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,700;12..96,800&family=Kalam:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ============ Connexion ============ -->
+<div class="connexion" id="vue-connexion">
+  <section class="feuille">
+    <h1 id="titre-connexion"></h1>
+    <p class="aide">Espace animateur. Saisissez le code défini dans le script Google.</p>
+    <form class="champs" id="form-connexion" autocomplete="off">
+      <label>Code d’accès<input type="password" id="champ-code" required autocomplete="current-password"></label>
+      <label>Nom de la session<input type="text" id="champ-session" placeholder="amiens-novembre" maxlength="40"></label>
+      <label>Moment<select class="champ-inline" id="champ-moment"></select></label>
+      <div class="message erreur" id="erreur-connexion" role="alert" hidden></div>
+      <div class="actions"><button class="btn" type="submit" id="btn-connexion">Ouvrir</button></div>
+    </form>
+  </section>
+</div>
+
+<!-- ============ Pilotage et projection ============ -->
+<div class="app anim" id="vue-principale" hidden>
+  <div class="barre-anim">
+    <div class="ligne toujours">
+      <span class="titre-anim" id="titre-anim"></span>
+      <i class="lien" id="voyant" title="Connexion au service"></i>
+      <button class="btn secondaire petit no-print" type="button" id="btn-projection">Masquer les commandes (touche C)</button>
+    </div>
+    <div class="ligne">
+      <label>Session <input class="champ-inline" type="text" id="champ-session-anim" maxlength="40" size="16"></label>
+      <label>Moment <select class="champ-inline" id="champ-moment-anim"></select></label>
+      <label><input type="checkbox" id="case-comparer"> Comparer les deux moments</label>
+      <label><input type="checkbox" id="case-apercu"> Aperçu privé (tout voir)</label>
+      <button class="btn secondaire petit" type="button" id="btn-lien">Copier le lien</button>
+      <button class="btn secondaire petit" type="button" id="btn-qr">Télécharger le QR</button>
+      <button class="btn secondaire petit" type="button" id="btn-imprimer">Imprimer ou enregistrer en PDF</button>
+      <button class="btn secondaire petit" type="button" id="btn-plein">Plein écran</button>
+      <button class="btn secondaire petit" type="button" id="btn-aide">Aide</button>
+      <button class="btn danger petit" type="button" id="btn-raz">Effacer cette session</button>
+    </div>
+    <div class="ligne toujours">
+      <div class="etapes" id="etapes" role="group" aria-label="Étapes"></div>
+      <button class="btn secondaire petit" type="button" id="btn-prec">Étape précédente</button>
+      <button class="btn petit" type="button" id="btn-suiv">Étape suivante</button>
+      <span class="compteurs" id="compteurs"></span>
+    </div>
+  </div>
+
+  <div class="bandeau-prive" id="bandeau-prive" hidden>Affichage privé : tous les résultats sont visibles. Ne projetez pas cet écran.</div>
+  <div class="message erreur" id="message-anim" role="alert" hidden style="margin:1rem 2rem"></div>
+
+  <div class="aide-rapide" id="aide-rapide" hidden>
+    <strong>Déroulé en un coup d’œil</strong>
+    <ol>
+      <li>Étape « Saisie des représentations » : projetez le QR code, attendez que le compteur atteigne l’effectif.</li>
+      <li>Passez à « Les mots », puis « Les métaphores », puis « Les curseurs » : à chaque étape, laissez le groupe commenter (lecture croisée).</li>
+      <li>« Saisie des attentes » : les participants classent leurs priorités et décrivent la situation redoutée.</li>
+      <li>« Synthèse » : portrait collectif et attentes. Imprimez ou enregistrez en PDF pour le retrouver au jour 3.</li>
+      <li>Jour 3 : choisissez « Jour 3 » dans le moment et cochez « Comparer » pour voir l’évolution.</li>
+    </ol>
+    <p style="margin-top:.6rem">Raccourcis : flèches gauche et droite pour changer d’étape, touche C pour masquer les commandes.</p>
+  </div>
+
+  <div class="zone-proj"><div class="contenu" id="proj"></div></div>
+</div>
+
+<script src="config.js"></script>
+<script src="shared.js"></script>
+<script src="qrcode.js"></script>
+<script>
+(function () {
+  "use strict";
+  const MI = window.MI, CFG = window.CONFIG, h = MI.h;
+  const $ = function (id) { return document.getElementById(id); };
+  const MOMENTS = Object.keys(CFG.MOMENTS);
+  const COULEUR_MOMENT = { J1: "#7cc6f5", J3: "#ffd54a" };
+
+  let code = sessionStorage.getItem("mi:code") || "";
+  const dep = MI.contexte();
+  let session = (new URLSearchParams(location.search).get("session")) ? dep.session : (MI.lire("mi:anim:session") || "defaut");
+  let moment = (new URLSearchParams(location.search).get("moment")) ? dep.moment : (MI.lire("mi:anim:moment") || MOMENTS[0]);
+  if (!CFG.MOMENTS[moment]) moment = MOMENTS[0];
+
+  let tout = null, comparer = false, apercu = false;
+  let structCle = null, zones = {}, refCompteur = null, minuteur = null;
+
+  // ---------------------------------------------------------------- Connexion
+
+  $("titre-connexion").textContent = CFG.TITRE;
+  function remplirMoments(select) {
+    select.replaceChildren();
+    MOMENTS.forEach(function (m) { select.append(h("option", { value: m }, CFG.MOMENTS[m])); });
+  }
+  remplirMoments($("champ-moment")); remplirMoments($("champ-moment-anim"));
+  $("champ-session").value = session === "defaut" ? "" : session;
+  $("champ-moment").value = moment;
+
+  function erreurConnexion(texte) { const e = $("erreur-connexion"); e.textContent = texte; e.hidden = !texte; }
+
+  async function verifier(c) {
+    try {
+      const r = await MI.appelPost({ action: "verifier", code: c, session: session, moment: moment });
+      return r && r.ok ? "" : (r && r.erreur === "code_invalide" ? "Code d’accès incorrect." : "Le service a répondu par une erreur.");
+    } catch (e) {
+      return e.code === "config" ? "L’adresse du service n’est pas renseignée dans config.js." : "Impossible de joindre le service. Vérifiez la connexion et l’adresse dans config.js.";
+    }
+  }
+
+  $("form-connexion").addEventListener("submit", async function (ev) {
+    ev.preventDefault();
+    erreurConnexion("");
+    session = MI.nettoyerSession($("champ-session").value);
+    moment = $("champ-moment").value;
+    $("btn-connexion").disabled = true;
+    const c = $("champ-code").value;
+    const err = await verifier(c);
+    $("btn-connexion").disabled = false;
+    if (err) { erreurConnexion(err); return; }
+    code = c; sessionStorage.setItem("mi:code", c);
+    ouvrir();
+  });
+
+  // ---------------------------------------------------------------- Outils
+
+  function donnee(m) { return tout && tout.parMoment && tout.parMoment[m] ? tout.parMoment[m] : null; }
+  function etapeReelle() { const d = donnee(moment); return d ? d.etape : 0; }
+  function etapeEff() { return apercu ? 5 : etapeReelle(); }
+
+  function lienParticipants() {
+    const u = new URL("index.html", location.href);
+    u.search = ""; u.hash = "";
+    u.searchParams.set("session", session);
+    u.searchParams.set("moment", moment);
+    return u.toString();
+  }
+
+  function qrSvgTexte(url) {
+    const q = qrcode(0, "M");
+    q.addData(url); q.make();
+    return q.createSvgTag({ cellSize: 6, margin: 0, scalable: true });
+  }
+  function qrNoeud(url) {
+    const doc = new DOMParser().parseFromString(qrSvgTexte(url), "image/svg+xml");
+    return document.importNode(doc.documentElement, true);
+  }
+
+  function message(texte) { const m = $("message-anim"); m.textContent = texte || ""; m.hidden = !texte; }
+
+  // ---------------------------------------------------------------- Étapes
+
+  function construireEtapes() {
+    const zone = $("etapes");
+    zone.replaceChildren();
+    CFG.ETAPES.forEach(function (nom, i) {
+      zone.append(h("button", { class: "etape-puce", type: "button", "data-i": i, onclick: function () { allerEtape(i); } }, nom));
+    });
+  }
+
+  function majBarre() {
+    const e = etapeReelle(), d = donnee(moment);
+    Array.prototype.forEach.call($("etapes").children, function (b, i) {
+      b.className = "etape-puce" + (i === e ? " active" : (i < e ? " faite" : ""));
+      b.setAttribute("aria-current", i === e ? "step" : "false");
+    });
+    $("btn-prec").disabled = e <= 0;
+    $("btn-suiv").disabled = e >= CFG.ETAPES.length - 1;
+    $("btn-suiv").textContent = e >= CFG.ETAPES.length - 1 ? "Dernière étape" : "Étape suivante : " + CFG.ETAPES[e + 1];
+    $("compteurs").textContent = d ? ("Saisie 1 : " + d.nbA + " réponses. Saisie 2 : " + d.nbB + " réponses.") : "";
+    $("bandeau-prive").hidden = !apercu;
+    $("titre-anim").textContent = CFG.TITRE + " (" + session + ", " + CFG.MOMENTS[moment] + ")";
+  }
+
+  async function allerEtape(n) {
+    n = Math.max(0, Math.min(CFG.ETAPES.length - 1, n));
+    const d = donnee(moment);
+    if (!d || d.etape === n) return;
+    const avant = d.etape;
+    d.etape = n; majBarre(); majProjection();           // affichage immédiat
+    try {
+      const r = await MI.appelPost({ action: "etape", code: code, session: session, moment: moment, etape: n });
+      if (!r || !r.ok) throw new Error((r && r.erreur) || "erreur");
+      message("");
+    } catch (e) {
+      d.etape = avant; majBarre(); majProjection();
+      message("Le changement d’étape n’a pas pu être enregistré. Vérifiez la connexion et réessayez.");
+    }
+  }
+
+  // ---------------------------------------------------------------- Projection
+
+  function bloc(cle, titre, sous, classeZone) {
+    const sec = h("section", { class: "section-resultats" }, h("h2", null, titre), sous ? h("p", { class: "meta" }, sous) : null);
+    const ms = comparer ? MOMENTS : [moment];
+    if (ms.length > 1) {
+      const col = h("div", { class: "colonnes deux" });
+      ms.forEach(function (m) {
+        const z = h("div", { class: classeZone || "" });
+        zones[cle + ":" + m] = z;
+        col.append(h("div", null, h("h3", null, CFG.MOMENTS[m]), z));
+      });
+      sec.append(col);
+    } else {
+      const z = h("div", { class: classeZone || "" });
+      zones[cle + ":" + ms[0]] = z;
+      sec.append(z);
+    }
+    return sec;
+  }
+
+  function accueil(e) {
+    const url = lienParticipants();
+    const boite = h("div", { class: "qr-boite", role: "img", "aria-label": "QR code d’accès à la saisie" });
+    boite.append(qrNoeud(url));
+    refCompteur = h("span", null, "0");
+    return h("div", { class: "accueil-qr" }, boite,
+      h("div", { class: "texte" },
+        h("h2", null, e === 0 ? "Scannez le code et répondez" : "Dites ce que vous venez chercher"),
+        h("p", { class: "aide" }, e === 0
+          ? "Trois questions rapides sur votre téléphone. C’est anonyme."
+          : "Deux questions sur vos attentes. Rescannez le code si la page s’est fermée."),
+        h("div", { class: "gros-compteur" }, refCompteur, h("small", null, "réponses reçues")),
+        h("p", { class: "lien-participants" }, url)));
+  }
+
+  function construireStructure(e) {
+    const proj = $("proj");
+    proj.replaceChildren(); zones = {}; refCompteur = null;
+    if (e === 0 || e === 4) { proj.append(accueil(e)); return; }
+
+    if (e === 5) {
+      zones.portrait = h("section", { class: "section-resultats" });
+      proj.append(zones.portrait,
+        bloc("prio", "Les attentes du groupe", CFG.ATTENTES.priorites.titre, ""),
+        bloc("sit", "Les situations redoutées", CFG.ATTENTES.situation.titre, "murs"));
+    }
+    proj.append(bloc("mots", "Les mots du groupe", CFG.QUESTIONS.mots.titre, "nuage"));
+    if (e >= 2) proj.append(bloc("meta", "Les images du manager idéal", CFG.QUESTIONS.metaphore.titre, "murs"));
+    if (e >= 3) {
+      const sec = h("section", { class: "section-resultats" }, h("h2", null, "Où le groupe place ses curseurs"), h("p", { class: "meta" }, "Chaque rond est une réponse. Le triangle indique la moyenne du groupe."));
+      zones.cur = h("div");
+      sec.append(zones.cur);
+      proj.append(sec);
+    }
+  }
+
+  function remplir(e) {
+    const ms = comparer ? MOMENTS : [moment];
+    const dc = donnee(moment);
+    if (refCompteur && dc) refCompteur.textContent = e === 0 ? dc.nbA : dc.nbB;
+
+    ms.forEach(function (m) {
+      const d = donnee(m) || { A: [], B: [] };
+      let z;
+      if ((z = zones["mots:" + m])) MI.rendreNuage(z, MI.compterMots(d.A.map(function (r) { return r.mots; })));
+      if ((z = zones["meta:" + m])) MI.rendrePostits(z, d.A.map(function (r) { return r.metaphore; }).filter(Boolean), "Aucune image pour l’instant.");
+      if ((z = zones["prio:" + m])) MI.rendrePriorites(z, d.B.map(function (r) { return r.priorites; }));
+      if ((z = zones["sit:" + m])) MI.rendrePostits(z, d.B.map(function (r) { return r.situation; }).filter(Boolean), "Aucune situation pour l’instant.");
+    });
+    if (zones.cur) {
+      MI.rendreCurseurs(zones.cur, ms.map(function (m) {
+        const d = donnee(m) || { A: [] };
+        return { nom: CFG.MOMENTS[m], couleur: comparer ? COULEUR_MOMENT[m] || "#ffd54a" : "#ffd54a", valeurs: MI.valeursCurseurs(d.A) };
+      }));
+    }
+    if (zones.portrait && dc) {
+      const sig = JSON.stringify([dc.A, dc.B]);
+      if (zones.portrait._sig !== sig) {
+        zones.portrait._sig = sig;
+        zones.portrait.replaceChildren(MI.construirePortrait(dc.A, dc.B));
+      }
+    }
+  }
+
+  function majProjection() {
+    const proj = $("proj");
+    if (!donnee(moment)) {
+      structCle = null;
+      proj.replaceChildren(MI.vide("Chargement des données…"));
+      return;
+    }
+    const e = etapeEff();
+    const cle = [e, comparer, moment, session].join("|");
+    if (cle !== structCle) { structCle = cle; construireStructure(e); }
+    remplir(e);
+  }
+
+  // ---------------------------------------------------------------- Synchronisation
+
+  async function rafraichir() {
+    try {
+      const r = await MI.appelPost({ action: "admin_donnees", code: code, session: session });
+      if (!r || !r.ok) {
+        if (r && r.erreur === "code_invalide") { deconnecter("Code d’accès refusé. Reconnectez-vous."); return; }
+        throw new Error((r && r.erreur) || "erreur");
+      }
+      tout = r;
+      $("voyant").className = "lien";
+      message("");
+      majBarre(); majProjection();
+    } catch (e) {
+      $("voyant").className = "lien hors";
+    }
+  }
+
+  function deconnecter(texte) {
+    clearInterval(minuteur);
+    sessionStorage.removeItem("mi:code"); code = "";
+    $("vue-principale").hidden = true; $("vue-connexion").hidden = false;
+    erreurConnexion(texte || "");
+  }
+
+  function changerContexte() {
+    MI.ecrire("mi:anim:session", session); MI.ecrire("mi:anim:moment", moment);
+    history.replaceState(null, "", "?session=" + encodeURIComponent(session) + "&moment=" + moment);
+    tout = null; structCle = null;
+    $("champ-session-anim").value = session; $("champ-moment-anim").value = moment;
+    majBarre(); majProjection(); rafraichir();
+  }
+
+  function ouvrir() {
+    $("vue-connexion").hidden = true; $("vue-principale").hidden = false;
+    construireEtapes();
+    changerContexte();
+    clearInterval(minuteur);
+    minuteur = setInterval(function () { if (!document.hidden) rafraichir(); }, 4000);
+  }
+
+  // ---------------------------------------------------------------- Commandes
+
+  $("champ-session-anim").addEventListener("change", function (e) { session = MI.nettoyerSession(e.target.value); changerContexte(); });
+  $("champ-moment-anim").addEventListener("change", function (e) { moment = e.target.value; changerContexte(); });
+  $("case-comparer").addEventListener("change", function (e) { comparer = e.target.checked; majProjection(); });
+  $("case-apercu").addEventListener("change", function (e) { apercu = e.target.checked; majBarre(); majProjection(); });
+  $("btn-prec").addEventListener("click", function () { allerEtape(etapeReelle() - 1); });
+  $("btn-suiv").addEventListener("click", function () { allerEtape(etapeReelle() + 1); });
+  $("btn-aide").addEventListener("click", function () { $("aide-rapide").hidden = !$("aide-rapide").hidden; });
+  $("btn-imprimer").addEventListener("click", function () { window.print(); });
+  $("btn-plein").addEventListener("click", function () {
+    if (document.fullscreenElement) document.exitFullscreen();
+    else if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen();
+  });
+
+  $("btn-lien").addEventListener("click", async function () {
+    const url = lienParticipants();
+    try { await navigator.clipboard.writeText(url); message(""); $("btn-lien").textContent = "Lien copié"; }
+    catch (e) { window.prompt("Copiez ce lien :", url); }
+    setTimeout(function () { $("btn-lien").textContent = "Copier le lien"; }, 2000);
+  });
+
+  $("btn-qr").addEventListener("click", function () {
+    const blob = new Blob([qrSvgTexte(lienParticipants())], { type: "image/svg+xml" });
+    const a = h("a", { href: URL.createObjectURL(blob), download: "qr-" + session + "-" + moment + ".svg" });
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+  });
+
+  $("btn-raz").addEventListener("click", async function () {
+    if (!window.confirm("Effacer toutes les réponses de la session « " + session + " » (" + CFG.MOMENTS[moment] + ") ? Cette action est définitive.")) return;
+    try {
+      const r = await MI.appelPost({ action: "reinitialiser", code: code, session: session, moment: moment });
+      if (!r || !r.ok) throw new Error();
+      message(""); rafraichir();
+    } catch (e) { message("La session n’a pas pu être effacée. Réessayez."); }
+  });
+
+  function basculerProjection() {
+    document.body.classList.toggle("mode-projection");
+    $("btn-projection").textContent = document.body.classList.contains("mode-projection")
+      ? "Afficher les commandes (touche C)" : "Masquer les commandes (touche C)";
+  }
+  $("btn-projection").addEventListener("click", basculerProjection);
+
+  document.addEventListener("keydown", function (ev) {
+    if ($("vue-principale").hidden) return;
+    const t = ev.target && ev.target.tagName;
+    if (t === "INPUT" || t === "SELECT" || t === "TEXTAREA") return;
+    if (ev.key === "ArrowRight") allerEtape(etapeReelle() + 1);
+    else if (ev.key === "ArrowLeft") allerEtape(etapeReelle() - 1);
+    else if (ev.key === "c" || ev.key === "C") basculerProjection();
+  });
+
+  // Reconnexion automatique si le code est déjà mémorisé pour cet onglet
+  if (code) {
+    verifier(code).then(function (err) { if (!err) ouvrir(); else deconnecter(""); });
+  }
+})();
+</script>
+</body>
+</html>

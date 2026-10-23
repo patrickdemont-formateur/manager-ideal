@@ -1,0 +1,298 @@
+=====================================================================================
+ LE MANAGER IDÉAL, VU PAR NOUS : AIDE-MÉMOIRE D'ADMINISTRATION
+ Activité d'ouverture de la formation « Manager pour la première fois »
+=====================================================================================
+
+SOMMAIRE
+  1. Comment l'outil fonctionne (en 30 secondes)
+  2. Installation, à faire une seule fois (environ 15 minutes)
+  3. Avant chaque séance (check-list de 5 minutes)
+  4. Pendant la séance : déroulé et étapes
+  5. Le jour 3 : comparer avec le jour 1
+  6. Après la séance : retrouver, exporter, effacer les données
+  7. Modifier les questions
+  8. Dépannage
+  9. Notes d'animation : lecture MBTI des curseurs
+ 10. Confidentialité et limites
+
+
+-------------------------------------------------------------------------------------
+1. COMMENT L'OUTIL FONCTIONNE
+-------------------------------------------------------------------------------------
+
+Trois éléments travaillent ensemble :
+
+  - Les PAGES (hébergées sur GitHub Pages, comme vos autres outils) :
+      index.html       page des participants (ouverte via le QR code)
+      animateur.html   votre page de pilotage et de projection
+  - Le SERVICE DE COLLECTE : un script Google (Code.gs) lié à une feuille Google Sheets.
+    Il reçoit les réponses, les range dans la feuille et les redistribue aux pages.
+  - La FEUILLE GOOGLE SHEETS : c'est votre base de données. Elle vous appartient.
+
+Les fichiers de l'outil :
+  index.html, animateur.html   les deux pages
+  config.js                    textes des questions + adresse du service Google (À RENSEIGNER)
+  shared.js, style.css         affichage (ne pas modifier)
+  qrcode.js                    génération du QR code (ne pas modifier)
+  Code.gs                      script à coller dans Google (CODE_ANIMATEUR à personnaliser)
+
+Principe de la séance : vous faites avancer 6 étapes depuis animateur.html. Les participants
+voient les résultats sur leur téléphone au fil des étapes, jamais avant.
+
+  Étape 0  Saisie des représentations   (mots, métaphore, 4 curseurs)
+  Étape 1  Les mots                     (nuage de mots)
+  Étape 2  Les métaphores               (post-it)
+  Étape 3  Les curseurs                 (répartition + moyenne)
+  Étape 4  Saisie des attentes          (classement des priorités, situation redoutée)
+  Étape 5  Synthèse                     (portrait collectif + attentes)
+
+
+-------------------------------------------------------------------------------------
+2. INSTALLATION (UNE SEULE FOIS)
+-------------------------------------------------------------------------------------
+
+A. Créer la feuille Google
+   1. Allez sur sheets.google.com et créez une feuille vide.
+   2. Nommez-la, par exemple : « Manager idéal : réponses ».
+
+B. Installer le script
+   1. Dans la feuille : menu Extensions > Apps Script.
+   2. Supprimez le contenu de l'éditeur, puis collez TOUT le contenu du fichier Code.gs.
+   3. Ligne CODE_ANIMATEUR : remplacez "CHANGEZ-MOI" par un code de votre choix.
+      Notez-le : c'est le code demandé par la page animateur.html.
+   4. Cliquez sur l'icône Enregistrer (disquette).
+   5. Dans la liste des fonctions (en haut), choisissez « installer », puis cliquez sur Exécuter.
+   6. Google demande une autorisation : « Examiner les autorisations », choisissez votre compte.
+      Un écran « Google n'a pas validé cette application » peut apparaître :
+      cliquez sur « Paramètres avancés » puis « Accéder à ... (non sécurisé) », puis « Autoriser ».
+      C'est normal : le script est le vôtre.
+   7. Vérifiez que la feuille contient maintenant les onglets SaisieA, SaisieB et Etat.
+
+C. Publier le service
+   1. Dans Apps Script : bouton Déployer > Nouveau déploiement.
+   2. Roue dentée « Sélectionner le type » > Application Web.
+   3. Description : « Manager idéal v1 ».
+   4. Exécuter en tant que : Moi.
+   5. Qui a accès : Tout le monde.   (indispensable : les participants n'ont pas de compte Google à utiliser)
+   6. Cliquez sur Déployer, puis COPIEZ l'« URL de l'application Web » (elle se termine par /exec).
+
+D. Relier les pages au service
+   1. Ouvrez config.js dans un éditeur de texte (Bloc-notes suffit).
+   2. Remplacez COLLER_ICI_L_ADRESSE_DU_DEPLOIEMENT par l'URL copiée (entre les guillemets).
+   3. Enregistrez.
+
+E. Mettre en ligne sur GitHub
+   1. Déposez les 6 fichiers de l'outil (index.html, animateur.html, config.js, shared.js,
+      style.css, qrcode.js ; Code.gs et cette aide restent chez vous) dans un dépôt avec GitHub Pages activé, comme pour vos autres pages.
+      Astuce : mettez-les dans un dossier dédié, par exemple /manager-ideal/.
+   2. Attendez 1 à 2 minutes que GitHub Pages publie.
+   3. Adresse de vos pages :
+        https://VOTRE-COMPTE.github.io/VOTRE-DEPOT/manager-ideal/animateur.html
+
+F. Tester
+   1. Ouvrez animateur.html, saisissez votre code, un nom de session (« test ») et cliquez sur Ouvrir.
+   2. Le QR code s'affiche. Scannez-le avec votre téléphone, répondez, puis vérifiez que le compteur
+      passe à « 1 réponse reçue ».
+   3. Avant la vraie séance, cliquez sur « Effacer cette session » pour supprimer le test.
+
+ATTENTION, ce que l'on oublie le plus souvent :
+  - Si vous MODIFIEZ Code.gs plus tard, il faut republier : Déployer > Gérer les déploiements >
+    icône crayon > Version : « Nouvelle version » > Déployer. Sans cela, l'ancienne version reste
+    servie. L'adresse /exec ne change pas.
+  - Compte Google d'entreprise (Google Workspace) : l'administrateur peut interdire l'accès
+    « Tout le monde ». Dans ce cas, utilisez un compte Gmail personnel pour héberger la feuille.
+
+
+-------------------------------------------------------------------------------------
+3. AVANT CHAQUE SÉANCE (5 MINUTES)
+-------------------------------------------------------------------------------------
+
+  [ ] Ouvrir animateur.html, saisir le code, le nom de session (ex. amiens-novembre) et le moment
+      « Jour 1 : ouverture ». Un nom de session par groupe : les réponses ne se mélangent pas.
+  [ ] Vérifier que le voyant vert (en haut à droite) est allumé et que l'étape est 0.
+  [ ] Tester avec UN téléphone : répondre, voir le compteur monter, puis cliquer sur
+      « Effacer cette session » pour repartir à zéro.
+  [ ] Préparer l'écran : « Plein écran » (F11 marche aussi) puis « Masquer les commandes » (touche C).
+  [ ] Prévoir un plan B : si le Wi-Fi de la salle est saturé, les participants peuvent passer
+      par leur 4G.
+  [ ] Le QR code est généré par la page : « Télécharger le QR » donne un fichier image (SVG) à
+      insérer dans un support. « Copier le lien » donne l'adresse à envoyer par message.
+      (Un QR code créé avec QR Code Monkey à partir de ce lien fonctionne aussi.)
+  [ ] Chaque session et chaque moment a son propre lien : le lien du jour 1 n'est pas celui du jour 3.
+
+
+-------------------------------------------------------------------------------------
+4. PENDANT LA SÉANCE : DÉROULÉ ET ÉTAPES (30 MINUTES)
+-------------------------------------------------------------------------------------
+
+  MINUTAGE      ÉTAPE À AFFICHER              CE QUE VOUS FAITES
+  0-3 min       Étape 0                       Cadrage oral, QR code projeté.
+  3-11 min      Étape 0                       Les participants répondent (3 écrans). ATTENDEZ que le
+                                              compteur atteigne l'effectif avant d'avancer :
+                                              la saisie se ferme au passage à l'étape 1.
+  11-19 min     Étape 1, puis 2, puis 3       Vous dévoilez mots, métaphores, curseurs un par un.
+                                              Binômes (2 min) : « Qu'est-ce qui m'étonne ? »,
+                                              puis plénière sur les écarts et les consensus.
+  19-26 min     Étape 4                       Les participants classent leurs priorités et décrivent
+                                              la situation redoutée. Attendez le compteur.
+  26-30 min     Étape 5                       Synthèse : lisez le portrait collectif et les 3 priorités.
+                                              Chacun écrit un objectif personnel dans son carnet.
+
+Commandes utiles :
+  - Flèches gauche et droite : étape précédente et suivante (le clavier d'un ordinateur suffit).
+  - Touche C : masque ou affiche la barre de commandes.
+  - « Aperçu privé » : vous voit tous les résultats sans changer ce que voient les participants.
+    Un bandeau rose vous rappelle de ne pas projeter cet écran.
+  - Si vous avancez trop vite, « Étape précédente » ramène en arrière : les résultats déjà dévoilés
+    se masquent de nouveau sur les téléphones.
+  - Un retardataire qui arrive après l'étape 0 voit les résultats mais ne peut plus répondre
+    à la première saisie. C'est voulu : cela évite qu'il se calque sur le groupe.
+
+Pour imprimer ou enregistrer le portrait collectif : à l'étape 5, bouton
+« Imprimer ou enregistrer en PDF », puis choisissez « Enregistrer au format PDF ».
+
+
+-------------------------------------------------------------------------------------
+5. LE JOUR 3 : COMPARER AVEC LE JOUR 1
+-------------------------------------------------------------------------------------
+
+  1. Ouvrez animateur.html avec le MÊME nom de session qu'au jour 1.
+  2. Choisissez le moment « Jour 3 : bilan ».
+  3. Partagez le QR code du jour 3 (il est différent de celui du jour 1).
+  4. Déroulez les étapes 0 à 3 comme au jour 1.
+  5. Cochez « Comparer les deux moments » : les deux nuages de mots, les deux séries de
+     post-it et les curseurs (bleu = jour 1, jaune = jour 3) s'affichent côte à côte.
+  6. Question de débrief : « Qu'est-ce qui a bougé dans votre représentation, et pourquoi ? »
+
+Les groupes sont indépendants : le jour 1 d'une session ne s'affiche jamais dans un autre groupe.
+Ne changez pas les libellés des priorités (config.js) entre le jour 1 et le jour 3.
+
+
+-------------------------------------------------------------------------------------
+6. APRÈS LA SÉANCE : RETROUVER, EXPORTER, EFFACER
+-------------------------------------------------------------------------------------
+
+Où sont les réponses ?  Dans votre feuille Google Sheets :
+  - Onglet SaisieA : une ligne par participant (3 mots, métaphore, 4 curseurs de 1 à 10).
+      Curseurs : 1 = côté gauche de la ligne, 10 = côté droit.
+      structure_souplesse   cadre précis (1)  ...  souplesse (10)
+      logique_valeurs       faits et logique (1)  ...  personnes et valeurs (10)
+      concret_vision        concret (1)  ...  vision (10)
+      presence_discretion   présence (1)  ...  discrétion (10)
+  - Onglet SaisieB : une ligne par participant (priorite1 = son premier choix, ..., priorite6;
+      situation redoutée).
+  - Onglet Etat : l'étape en cours de chaque session. Ne pas modifier à la main.
+  Les colonnes « session » et « moment » permettent de filtrer (Données > Créer un filtre).
+
+Exporter : dans Google Sheets, Fichier > Télécharger > Microsoft Excel (.xlsx) ou CSV.
+
+Effacer :
+  - Bouton « Effacer cette session » (animateur.html) : supprime les réponses et l'étape du
+    groupe et du moment affichés.
+  - Ou directement dans la feuille : supprimez les lignes concernées.
+  Pensez à effacer les réponses quand elles ne sont plus utiles (voir paragraphe 10).
+
+
+-------------------------------------------------------------------------------------
+7. MODIFIER LES QUESTIONS
+-------------------------------------------------------------------------------------
+
+Tout se passe dans config.js (ouvrir avec le Bloc-notes). Vous pouvez reformuler :
+  - les titres, aides et exemples des questions,
+  - le texte des deux extrémités de chaque curseur,
+  - le nom des moments et des étapes.
+
+À NE PAS FAIRE :
+  - ne changez pas les valeurs « cle » des curseurs (elles correspondent aux colonnes de la feuille),
+  - gardez exactement 6 priorités (le script le vérifie),
+  - ne changez pas les libellés des priorités entre le jour 1 et le jour 3,
+  - gardez les guillemets, les virgules et les accolades : une virgule oubliée bloque la page.
+
+Après modification : redéposez config.js sur GitHub, attendez 1 à 2 minutes, puis rechargez
+les pages (sur téléphone : fermez et rouvrez l'onglet).
+Pour changer les textes du portrait ou des titres de section : ils sont dans animateur.html
+et index.html (rechercher le texte exact).
+
+
+-------------------------------------------------------------------------------------
+8. DÉPANNAGE
+-------------------------------------------------------------------------------------
+
+  SYMPTÔME                                   CAUSE PROBABLE ET REMÈDE
+  « Code d'accès incorrect »                 Le code saisi ne correspond pas à CODE_ANIMATEUR dans
+                                             Code.gs. Si vous avez modifié Code.gs, republiez
+                                             (paragraphe 2, attention).
+  « L'adresse du service n'est pas           config.js contient encore COLLER_ICI... Renseignez
+   renseignée »                              l'adresse /exec et redéposez config.js sur GitHub.
+  « Impossible de joindre le service »       Mauvaise adresse dans config.js, ou déploiement non réglé
+                                             sur « Tout le monde ». Ouvrez l'adresse /exec dans un
+                                             navigateur : vous devez voir un message « service actif ».
+  Le voyant est orange                       Connexion instable. L'écran garde le dernier affichage et
+                                             se met à jour dès que le réseau revient.
+  Un participant : « La saisie est           L'animateur a déjà quitté l'étape 0 (ou 4). Revenez à
+   terminée »                                l'étape concernée avec « Étape précédente » pour rouvrir.
+  Le compteur reste à 0                      Vérifiez que le participant utilise le lien de la même
+                                             session ET du même moment que la page animateur.
+  Les résultats mettent quelques secondes    Normal : les pages se rafraîchissent toutes les 4 à 5 s.
+  Je vois une ancienne version               Rechargez avec Ctrl+F5 (ordinateur), ou videz le cache.
+  Message d'autorisation Google au premier   Normal, voir paragraphe 2 (étape B6).
+   lancement
+  « Plafond atteint »                        Le script limite à 40 réponses par session et par saisie
+                                             (protection contre les abus). Modifiable : constante
+                                             MAX_REPONSES dans Code.gs, puis republier.
+
+
+-------------------------------------------------------------------------------------
+9. NOTES D'ANIMATION : LECTURE MBTI DES CURSEURS (À GARDER POUR VOUS)
+-------------------------------------------------------------------------------------
+
+Les quatre curseurs reprennent, sans les nommer, les quatre dimensions des préférences MBTI :
+
+  Cadre / souplesse            ~ Jugement (J) / Perception (P)     : planifier ou rester ouvert
+  Faits / personnes            ~ Pensée (T) / Sentiment (F)        : critère de décision
+  Concret / vision             ~ Sensation (S) / Intuition (N)     : source d'information
+  Présence / discrétion        ~ Extraversion (E) / Introversion (I) : énergie dans la relation
+
+Précautions :
+  - Ces curseurs expriment l'idée que chacun se fait d'un BON MANAGER, pas son profil. Il peut
+    refléter ses préférences, mais aussi un manager que l'on a connu ou que l'on a envie de fuir.
+  - Parlez de PRÉFÉRENCES, jamais de types ni d'étiquettes. Le MBTI est un outil de réflexion,
+    pas un instrument de mesure prédictive : cette nuance renforce votre crédibilité.
+  - Un groupe très dispersé sur un curseur illustre l'idée « nous n'avons pas tous le même idéal ».
+    Un groupe très homogène mérite aussi d'être nommé : « Attention à l'angle mort collectif. »
+  - Le mot « Consensus » s'affiche quand l'écart-type est faible, « Opinions partagées » quand il est
+    fort (à partir de 3 réponses). Ce sont des repères, pas des mesures statistiques.
+  - Au bloc MBTI du jour 2, vous pouvez relire ces résultats : « Votre idéal est une préférence,
+    pas une norme. »
+
+
+-------------------------------------------------------------------------------------
+10. CONFIDENTIALITÉ ET LIMITES
+-------------------------------------------------------------------------------------
+
+Ce que l'outil NE stocke PAS : aucun nom, aucune adresse e-mail, aucun identifiant d'appareil,
+aucune adresse IP. Les réponses sont anonymes, mais avec un petit groupe (8 personnes), une
+métaphore ou une situation très personnelle peut permettre de reconnaître son auteur. Dites-le au
+groupe en début d'activité.
+
+Ce que l'outil stocke : les réponses, la date et l'heure, le nom de la session et le moment.
+Sur le téléphone de chaque participant, une simple marque indique « a déjà répondu » (elle ne
+contient aucune donnée personnelle et évite l'envoi en double).
+
+Hébergement : les données sont chez Google, dans votre compte. Si votre client est sensible à ce
+point (données hébergées hors de ses systèmes), précisez-le-lui. Les réponses ne sont pas des
+données personnelles directes, mais pensez à les effacer une fois la formation terminée.
+
+Limites à connaître :
+  - Le code animateur est une protection simple, pas un coffre-fort. Ne le réutilisez pas ailleurs.
+  - Quiconque connaît l'adresse /exec peut envoyer des réponses : le plafond de 40 réponses par
+    session limite l'effet d'un abus, et une saisie est refusée hors des étapes 0 et 4.
+  - Les résultats ne sont diffusés aux téléphones qu'au fil des étapes : cette règle est appliquée
+    par le script, pas seulement par la page.
+  - Un participant peut en théorie répondre deux fois en vidant les données de son navigateur.
+    Cela se voit au compteur (plus de réponses que de participants) : effacez et recommencez.
+  - L'outil est conçu pour de petits groupes (plafond de 40 réponses par session et par saisie).
+    Il a été testé sur un groupe simulé de 5 personnes avec une copie locale du service Google :
+    faites donc le test de l'étape F (paragraphe 2) sur votre vrai déploiement, la veille de la séance.
+
+=====================================================================================

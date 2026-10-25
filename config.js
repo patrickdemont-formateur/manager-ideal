@@ -4,11 +4,11 @@
  * 1) Collez l’adresse de votre déploiement Apps Script dans APPS_SCRIPT_URL.
  * 2) Vous pouvez reformuler tous les textes ci-dessous.
  *
- * À NE PAS MODIFIER : les valeurs "cle" des curseurs (elles correspondent aux colonnes de la feuille Google).
+ * À NE PAS MODIFIER : les valeurs "cle" des curseurs, et le nombre de crans (4) (elles correspondent aux colonnes de la feuille Google).
  * À NE PAS CHANGER entre le jour 1 et le jour 3 : les libellés des priorités (la comparaison s’appuie dessus).
  */
 window.CONFIG = {
-  APPS_SCRIPT_URL: "https://script.google.com/macros/s/AKfycbzlxXZ4BcgG4-pIL8w10_fID-SJlb4ntNXqIYJDt08FbuyJ79pURId0Uy_1Qw_36MGJ9Q/exec",
+  APPS_SCRIPT_URL: "COLLER_ICI_L_ADRESSE_DU_DEPLOIEMENT",
 
   TITRE: "Le manager idéal, vu par nous",
   SOUS_TITRE: "Manager pour la première fois",
@@ -27,6 +27,16 @@ window.CONFIG = {
     "Synthèse"
   ],
 
+  // Sous-titre de chaque étape (qui agit ?)
+  ETAPES_SOUS: [
+    "Les participants répondent",
+    "On dévoile",
+    "On dévoile",
+    "On dévoile",
+    "Les participants répondent",
+    "On conclut"
+  ],
+
   QUESTIONS: {
     mots: {
       titre: "Un manager idéal, c’est quelqu’un qui…",
@@ -40,7 +50,9 @@ window.CONFIG = {
     },
     curseurs: {
       titre: "Un bon manager…",
-      aide: "Pour chaque ligne, placez le curseur là où se situe, pour vous, le manager idéal.",
+      aide: "Pour chaque ligne, choisissez le côté qui vous ressemble le plus. Il n’y a pas de position neutre : il faut prendre parti.",
+      // Libellés des 4 crans, de gauche à droite (4 crans exactement : le script Google en attend 4)
+      crans: ["Tout à fait", "Plutôt", "Plutôt", "Tout à fait"],
       items: [
         {
           cle: "structure_souplesse",

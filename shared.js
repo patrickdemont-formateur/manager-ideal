@@ -3,7 +3,12 @@
   "use strict";
 
   const CFG = window.CONFIG;
-  const COULEURS_MOTS = ["#ffd54a", "#ff8fb1", "#7cc6f5", "#98e2b0", "#ff9f5a", "#f4f1e8"];
+  const NB_CRANS = 4;   // curseurs à 4 crans : 1-2 = côté gauche, 3-4 = côté droit
+  const COULEURS_MOTS_SOMBRE = ["#ffd54a", "#ff8fb1", "#7cc6f5", "#98e2b0", "#ff9f5a", "#f4f1e8"];
+  const COULEURS_MOTS_CLAIR = ["#0e7c6b", "#c2185b", "#2f6db5", "#b85f00", "#7a3e8e", "#172033"];
+  function couleursMots() {
+    return document.body && document.body.classList.contains("theme-clair") ? COULEURS_MOTS_CLAIR : COULEURS_MOTS_SOMBRE;
+  }
 
   // ---------- Construction du DOM (aucune injection de HTML : les réponses restent du texte) ----------
 
@@ -111,11 +116,19 @@
     return Array.from(m.values()).sort(function (a, b) { return b.n - a.n || a.mot.localeCompare(b.mot, "fr"); });
   }
 
+  /** Répartition d'un curseur : réponses côté gauche (crans 1-2) et côté droit (crans 3-4). */
+  function repartition(valeurs) {
+    const v = (valeurs || []).filter(function (x) { return Number.isInteger(x) && x >= 1 && x <= NB_CRANS; });
+    const g = v.filter(function (x) { return x <= NB_CRANS / 2; }).length;
+    return { n: v.length, g: g, d: v.length - g, valeurs: v };
+  }
+
   function etiquetteDispersion(valeurs) {
-    if (!valeurs || valeurs.length < 3) return "";
-    const sd = ecartType(valeurs);
-    if (sd <= 1.5) return "Consensus";
-    if (sd >= 2.8) return "Opinions partagées";
+    const r = repartition(valeurs);
+    if (r.n < 3) return "";
+    const p = Math.max(r.g, r.d) / r.n;
+    if (p >= 0.8) return "Consensus";
+    if (p <= 0.625) return "Opinions partagées";
     return "Plutôt nuancé";
   }
 
@@ -141,7 +154,7 @@
         class: "mot" + (hs % 3 === 0 ? " note" : "") + (neuf ? " neuf" : ""),
         style: {
           fontSize: (1.15 + t * 2.3).toFixed(2) + "em",
-          color: COULEURS_MOTS[hs % COULEURS_MOTS.length],
+          color: couleursMots()[hs % couleursMots().length],
           animationDelay: neuf ? (rang++ * 70) + "ms" : "0ms"
         }
       }, m.mot, m.n > 1 ? h("sup", null, m.n) : null));
@@ -168,7 +181,7 @@
     });
   }
 
-  /** series : [{nom, couleur, valeurs: {cle: [nombres]}}] — plusieurs séries = comparaison jour 1 / jour 3 */
+  /** series : [{nom, couleur, valeurs: {cle: [crans 1 à 4]}}] ; plusieurs séries = comparaison jour 1 / jour 3 */
   function rendreCurseurs(el, series) {
     const sig = JSON.stringify(series);
     if (el._sig === sig) return;
@@ -182,31 +195,38 @@
 
     CFG.QUESTIONS.curseurs.items.forEach(function (it) {
       const bloc = h("div", { class: "bloc-curseur" },
-        h("div", { class: "libelles" }, h("span", null, it.gauche), h("span", null, it.droite)));
+        h("div", { class: "libelles" }, h("span", { class: "a" }, it.gauche), h("span", { class: "b" }, it.droite)));
       series.forEach(function (s) {
-        const vals = (s.valeurs[it.cle] || []).filter(function (v) { return v >= 1 && v <= 10; });
+        const r = repartition(s.valeurs[it.cle]);
         const piles = {};
-        vals.forEach(function (v) { piles[v] = (piles[v] || 0) + 1; });
+        r.valeurs.forEach(function (v) { piles[v] = (piles[v] || 0) + 1; });
         const hauteur = Math.max.apply(null, [1].concat(Object.keys(piles).map(function (k) { return piles[k]; })));
         const places = {};
-        const piste = h("div", { class: "piste", style: { "--pile": hauteur, "--c": s.couleur } });
-        vals.slice().sort(function (a, b) { return a - b; }).forEach(function (v) {
-          const k = places[v] = (places[v] || 0) + 1;
-          const cle = it.cle + ":" + s.nom + ":" + v + ":" + k;
+        const piste = h("div", { class: "piste", style: { "--pile": hauteur } }, h("span", { class: "centre" }));
+        for (let k = 1; k <= NB_CRANS; k++) piste.append(h("span", { class: "tic", style: { "--x": ((k - 0.5) / NB_CRANS * 100).toFixed(2) } }));
+        r.valeurs.slice().sort(function (a, b) { return a - b; }).forEach(function (v) {
+          const rang = places[v] = (places[v] || 0) + 1;
+          const cle = it.cle + ":" + s.nom + ":" + v + ":" + rang;
           const neuf = !vus.has(cle);
           vus.add(cle);
           piste.append(h("span", {
-            class: "pt" + (neuf ? " neuf" : ""),
-            style: { "--x": ((v - 1) / 9 * 100).toFixed(2), "--k": k - 1 }
+            class: "pt " + (v <= NB_CRANS / 2 ? "g" : "d") + (neuf ? " neuf" : ""),
+            style: { "--x": ((v - 0.5) / NB_CRANS * 100).toFixed(2), "--k": rang - 1 }
           }));
         });
-        if (vals.length >= 2) piste.append(h("span", { class: "moy", style: { "--x": ((moyenne(vals) - 1) / 9 * 100).toFixed(2) } }));
-        const disp = etiquetteDispersion(vals);
-        bloc.append(h("div", { class: "piste-serie", style: { "--c": s.couleur } },
-          series.length > 1 ? h("div", { class: "legende" }, h("i"), s.nom) : null,
+        if (series.length > 1) {
+          bloc.append(h("div", { class: "legende" }, h("i", { style: { background: s.couleur } }), s.nom));
+        }
+        bloc.append(h("div", { class: "rangee-serie" },
+          h("div", { class: "tally g", "aria-label": r.g + " personne(s) côté gauche" }, String(r.g)),
           piste,
-          disp ? h("span", { class: "etiquette" }, disp) : null));
+          h("div", { class: "tally d", "aria-label": r.d + " personne(s) côté droit" }, String(r.d))));
+        const disp = etiquetteDispersion(r.valeurs);
+        if (disp) bloc.append(h("span", { class: "etiquette" }, disp));
       });
+      const reperes = CFG.QUESTIONS.curseurs.crans || ["Tout à fait", "Plutôt", "Plutôt", "Tout à fait"];
+      bloc.append(h("div", { class: "rangee-serie" }, h("span"),
+        h("div", { class: "reperes" }, reperes.map(function (l) { return h("span", null, l); })), h("span")));
       el.append(bloc);
     });
   }
@@ -251,7 +271,7 @@
     const v = {};
     CFG.QUESTIONS.curseurs.items.forEach(function (it) {
       v[it.cle] = (A || []).map(function (r) { return r.curseurs && r.curseurs[it.cle]; })
-        .filter(function (x) { return typeof x === "number"; });
+        .filter(function (x) { return Number.isInteger(x) && x >= 1 && x <= NB_CRANS; });
     });
     return v;
   }
@@ -268,16 +288,15 @@
 
     const lignes = [];
     CFG.QUESTIONS.curseurs.items.forEach(function (it) {
-      const vals = A.map(function (r) { return r.curseurs && r.curseurs[it.cle]; })
-        .filter(function (v) { return typeof v === "number" && v >= 1 && v <= 10; });
-      if (!vals.length) return;
-      const m = moyenne(vals);
+      const vals = A.map(function (r) { return r.curseurs && r.curseurs[it.cle]; });
+      const r = repartition(vals);
+      if (!r.n) return;
       let tendance;
-      if (m < 4.5) tendance = "Penche vers « " + it.courtGauche + " »";
-      else if (m > 6.5) tendance = "Penche vers « " + it.courtDroite + " »";
-      else tendance = "Équilibre entre « " + it.courtGauche + " » et « " + it.courtDroite + " »";
-      const disp = etiquetteDispersion(vals);
-      lignes.push(h("li", null, tendance + " (moyenne " + fmt(m) + " sur 10)" + (disp ? ", " + disp.toLowerCase() : "")));
+      if (r.g > r.d) tendance = "Penche vers « " + it.courtGauche + " » : " + r.g + " sur " + r.n;
+      else if (r.d > r.g) tendance = "Penche vers « " + it.courtDroite + " » : " + r.d + " sur " + r.n;
+      else tendance = "Groupe partagé : autant pour « " + it.courtGauche + " » que pour « " + it.courtDroite + " »";
+      const disp = etiquetteDispersion(r.valeurs);
+      lignes.push(h("li", null, tendance + (disp && r.g !== r.d ? " (" + disp.toLowerCase() + ")" : "")));
     });
     if (lignes.length) racine.append(h("h3", null, "Ce que le groupe attend de lui"), h("ul", null, lignes));
 

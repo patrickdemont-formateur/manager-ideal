@@ -36,8 +36,6 @@
 
   let donnees = null;       // dernières données reçues du service
   let vueCourante = null;   // vue affichée (la saisie n'est reconstruite que si la vue change)
-  let sections = {};        // sections de résultats
-  let zones = {};           // conteneurs des résultats
   let echecs = 0;
 
   const cleLocale = function (bloc) { return "mi:" + ctx.session + ":" + ctx.moment + ":" + bloc; };
@@ -104,24 +102,33 @@
         maj();
       } else {
         const q = CFG.QUESTIONS.curseurs;
+        const crans = q.crans || ["Tout à fait", "Plutôt", "Plutôt", "Tout à fait"];
+        const NB = 4;   // 4 crans : 1 et 2 à gauche, 3 et 4 à droite, aucune position neutre
         carte.append(h("h2", null, q.titre), h("p", { class: "aide" }, q.aide));
         q.items.forEach(function (it) {
-          const place = rep.curseurs[it.cle] !== undefined;
-          const rappel = h("div", { class: "rappel" }, place ? "" : "Touchez la ligne pour placer le curseur.");
-          const poser = function (e) {
-            rep.curseurs[it.cle] = Number(e.target.value);
-            e.target.classList.remove("vide");
-            rappel.textContent = "";
-            maj();
+          const rappel = h("div", { class: "rappel", "aria-live": "polite" }, "");
+          const groupe = h("div", { class: "crans", role: "radiogroup", "aria-label": it.gauche + " ou " + it.droite });
+          const boutons = [];
+          const afficher = function () {
+            const v = rep.curseurs[it.cle];
+            boutons.forEach(function (b, k) { b.setAttribute("aria-checked", String(v === k + 1)); });
+            rappel.textContent = v ? (v <= NB / 2 ? "À gauche, " : "À droite, ") + crans[v - 1].toLowerCase() : "";
           };
-          const curseur = h("input", {
-            type: "range", min: "1", max: "10", step: "1", class: place ? "" : "vide",
-            "aria-label": it.gauche + " ou " + it.droite,
-            oninput: poser, onchange: poser, onpointerup: poser
-          });
-          curseur.value = place ? rep.curseurs[it.cle] : 5;
+          for (let k = 1; k <= NB; k++) {
+            if (k === NB / 2 + 1) groupe.append(h("span", { class: "sep", "aria-hidden": "true" }));
+            const b = h("button", {
+              type: "button", role: "radio", "aria-checked": "false",
+              class: "cran " + (k <= NB / 2 ? "g" : "d") + (k === 1 || k === NB ? " fort" : ""),
+              "aria-label": (k <= NB / 2 ? it.gauche : it.droite) + " : " + crans[k - 1].toLowerCase(),
+              onclick: function () { rep.curseurs[it.cle] = k; afficher(); maj(); }
+            }, h("span", { class: "pastille" }), h("span", { class: "lib" }, crans[k - 1]));
+            boutons.push(b);
+            groupe.append(b);
+          }
           carte.append(h("div", { class: "curseur-saisie" },
-            h("div", { class: "textes" }, h("span", null, it.gauche), h("span", null, it.droite)), curseur, rappel));
+            h("div", { class: "textes" }, h("span", { class: "a" }, it.gauche), h("span", { class: "b" }, it.droite)),
+            groupe, rappel));
+          afficher();
         });
         if (erreur) carte.append(h("div", { class: "message erreur", role: "alert" }, erreur));
         retour = h("button", { class: "btn secondaire", type: "button", disabled: envoi, onclick: function () { ecran = 1; dessiner(); } }, "Retour");
@@ -234,98 +241,51 @@
     return racine;
   }
 
-  // ---------------------------------------------------------------- Écrans d'attente et de résultats
+  // ---------------------------------------------------------------- Écrans d'attente
 
-  function carteAttente(titre, texte) {
+  function carteAttente(titre, texte, coche) {
     return h("section", { class: "feuille attente" },
-      h("div", { class: "coche", "aria-hidden": "true" }, "✓"), h("h2", null, titre), h("p", { class: "aide" }, texte));
-  }
-
-  function section(cle, titre, sousTexte, classeZone) {
-    const zone = h("div", { class: classeZone || "" });
-    zones[cle] = zone;
-    sections[cle] = h("section", { class: "section-resultats", hidden: true },
-      h("h2", null, titre), sousTexte ? h("p", { class: "meta" }, sousTexte) : null, zone);
-    return sections[cle];
-  }
-
-  function sectionsA() {
-    return [
-      section("mots", "Les mots du groupe", CFG.QUESTIONS.mots.titre, "nuage"),
-      section("meta", "Les images du manager idéal", CFG.QUESTIONS.metaphore.titre, "murs"),
-      section("cur", "Où le groupe place ses curseurs", "Chaque rond est une réponse. Le triangle indique la moyenne du groupe.", "")
-    ];
+      coche === false ? null : h("div", { class: "coche", "aria-hidden": "true" }, "✓"),
+      h("h2", null, titre), h("p", { class: "aide" }, texte));
   }
 
   function construireVue(v) {
-    sections = {}; zones = {};
     contenu.replaceChildren();
     if (v === "saisieA") contenu.append(construireSaisieA());
     else if (v === "saisieB") contenu.append(construireSaisieB());
     else if (v === "attenteA") {
-      contenu.append(carteAttente("C’est envoyé, merci", "Regardez l’écran de la salle : les résultats du groupe seront dévoilés étape par étape."));
-    } else if (v === "resultatsA" || v === "resultatsA_tard") {
-      if (v === "resultatsA_tard") {
-        contenu.append(h("div", { class: "message info" }, "La saisie est terminée. Suivez ici les résultats du groupe."));
-      }
-      sectionsA().forEach(function (s) { contenu.append(s); });
+      contenu.append(carteAttente("C’est envoyé, merci", "Regardez l’écran de la salle : les résultats du groupe y seront dévoilés étape par étape."));
     } else if (v === "attenteB") {
-      contenu.append(carteAttente("C’est envoyé, merci", "Les attentes du groupe s’afficheront quand l’animateur les dévoilera."));
-      sectionsA().forEach(function (s) { contenu.append(s); });
-    } else if (v === "synthese") {
-      const portrait = h("section", { class: "section-resultats" });
-      zones.portrait = portrait;
-      contenu.append(portrait,
-        section("prio", "Les attentes du groupe", CFG.ATTENTES.priorites.titre, ""),
-        section("sit", "Les situations redoutées", CFG.ATTENTES.situation.titre, "murs"));
-      sectionsA().forEach(function (s) { contenu.append(s); });
+      contenu.append(carteAttente("C’est envoyé, merci", "La synthèse du groupe va s’afficher sur l’écran de la salle."));
+    } else if (v === "fin") {
+      contenu.append(carteAttente("Merci pour votre participation", "La synthèse du groupe est affichée sur l’écran de la salle."));
+    } else if (v === "clos") {
+      contenu.append(carteAttente("La saisie est terminée", "Suivez les résultats du groupe sur l’écran de la salle.", false));
     }
   }
 
   function choisirVue() {
     const e = donnees.etape;
     if (e === 0) return aRepondu("A") ? "attenteA" : "saisieA";
-    if (e <= 3) return aRepondu("A") ? "resultatsA" : "resultatsA_tard";
+    if (e <= 3) return aRepondu("A") ? "attenteA" : "clos";
     if (e === 4) return aRepondu("B") ? "attenteB" : "saisieB";
-    return "synthese";
-  }
-
-  function majResultats() {
-    const e = donnees.etape, A = donnees.A || [], B = donnees.B || [];
-    if (sections.mots) {
-      sections.mots.hidden = e < 1;
-      if (e >= 1) MI.rendreNuage(zones.mots, MI.compterMots(A.map(function (r) { return r.mots; })));
-    }
-    if (sections.meta) {
-      sections.meta.hidden = e < 2;
-      if (e >= 2) MI.rendrePostits(zones.meta, A.map(function (r) { return r.metaphore; }).filter(Boolean), "Les images arrivent…");
-    }
-    if (sections.cur) {
-      sections.cur.hidden = e < 3;
-      if (e >= 3) MI.rendreCurseurs(zones.cur, [{ nom: "Le groupe", couleur: "#ffd54a", valeurs: MI.valeursCurseurs(A) }]);
-    }
-    if (sections.prio) {
-      MI.rendrePriorites(zones.prio, B.map(function (r) { return r.priorites; }));
-      sections.prio.hidden = false;
-    }
-    if (sections.sit) {
-      MI.rendrePostits(zones.sit, B.map(function (r) { return r.situation; }).filter(Boolean), "Les situations arrivent…");
-      sections.sit.hidden = false;
-    }
-    if (zones.portrait) {
-      const sig = JSON.stringify([A, B]);
-      if (zones.portrait._sig !== sig) {
-        zones.portrait._sig = sig;
-        zones.portrait.replaceChildren(MI.construirePortrait(A, B));
-      }
-    }
+    return (aRepondu("A") || aRepondu("B")) ? "fin" : "clos";
   }
 
   function majVue() {
     if (!donnees) return;
     const v = choisirVue();
-    if (v !== vueCourante) { vueCourante = v; construireVue(v); }
-    majResultats();
+    if (v === vueCourante) return;
+    // Saisie en cours au moment où l'animateur clôt : on garde le formulaire, avec une explication
+    if (vueCourante && vueCourante.indexOf("saisie") === 0 && v === "clos") {
+      if (!document.getElementById("bandeau-clos")) {
+        contenu.prepend(h("div", { class: "message erreur", id: "bandeau-clos", role: "alert" },
+          "La saisie vient d’être clôturée : vos réponses ne seront pas enregistrées. Suivez l’écran de la salle."));
+      }
+      return;
+    }
+    vueCourante = v;
+    construireVue(v);
   }
 
   // ---------------------------------------------------------------- Synchronisation
@@ -336,21 +296,26 @@
       h("h2", null, "Service indisponible"), h("p", { class: "aide" }, texte)));
   }
 
+  let enCours = false;
   async function rafraichir() {
+    if (enCours) return;
+    enCours = true;
     try {
-      const d = await MI.appelGet({ action: "donnees", session: ctx.session, moment: ctx.moment });
-      if (!d || !d.ok) throw new Error((d && d.erreur) || "reponse");
+      const d = await MI.appelGet({ action: "etat", session: ctx.session, moment: ctx.moment });
+      if (!d || !d.ok || typeof d.etape !== "number") throw new Error((d && d.erreur) || "reponse");
       donnees = d; echecs = 0; voyant(true); majVue();
     } catch (e) {
       if (e.code === "config") { indisponible("La page n’est pas encore reliée au service de collecte. Prévenez l’animateur."); return; }
       echecs++; voyant(false);
       if (!donnees && echecs >= 3) indisponible("Impossible de joindre le service. Vérifiez votre connexion ou prévenez l’animateur.");
+    } finally {
+      enCours = false;
     }
   }
 
   contenu.append(h("section", { class: "feuille attente" }, h("p", { class: "aide" }, "Connexion en cours…")));
   rafraichir();
-  setInterval(function () { if (!document.hidden) rafraichir(); }, 5000);
+  setInterval(function () { if (!document.hidden) rafraichir(); }, 6000);
   document.addEventListener("visibilitychange", function () { if (!document.hidden) rafraichir(); });
   window.addEventListener("online", rafraichir);
 })();

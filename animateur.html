@@ -4,14 +4,15 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<meta name="theme-color" content="#10302b">
+<meta name="theme-color" content="#ffffff">
 <title>Animateur : le manager idéal, vu par nous</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,700;12..96,800&family=Kalam:wght@400;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="animateur.css">
 </head>
-<body>
+<body class="theme-clair">
 
 <!-- ============ Connexion ============ -->
 <div class="connexion" id="vue-connexion">
@@ -31,42 +32,80 @@
 <!-- ============ Pilotage et projection ============ -->
 <div class="app anim" id="vue-principale" hidden>
   <div class="barre-anim">
-    <div class="ligne toujours">
-      <span class="titre-anim" id="titre-anim"></span>
-      <i class="lien" id="voyant" title="Connexion au service"></i>
-      <button class="btn secondaire petit no-print" type="button" id="btn-projection">Masquer les commandes (touche C)</button>
+
+    <div class="rang-titre">
+      <div class="titre-bloc">
+        <h1 id="titre-h1"></h1>
+        <p class="pill-session" id="pill-session"></p>
+      </div>
+      <span class="voyant attente" id="voyant" role="status">
+        <i class="point" aria-hidden="true"></i><span class="texte" id="voyant-texte">Connexion en cours…</span>
+      </span>
+      <button class="btn secondaire no-print" type="button" id="btn-projection">Masquer les commandes (touche C)</button>
     </div>
-    <div class="ligne">
-      <label>Session <input class="champ-inline" type="text" id="champ-session-anim" maxlength="40" size="16"></label>
-      <label>Moment <select class="champ-inline" id="champ-moment-anim"></select></label>
-      <label><input type="checkbox" id="case-comparer"> Comparer les deux moments</label>
-      <label><input type="checkbox" id="case-apercu"> Aperçu privé (tout voir)</label>
-      <button class="btn secondaire petit" type="button" id="btn-lien">Copier le lien</button>
-      <button class="btn secondaire petit" type="button" id="btn-qr">Télécharger le QR</button>
-      <button class="btn secondaire petit" type="button" id="btn-imprimer">Imprimer ou enregistrer en PDF</button>
-      <button class="btn secondaire petit" type="button" id="btn-plein">Plein écran</button>
-      <button class="btn secondaire petit" type="button" id="btn-aide">Aide</button>
-      <button class="btn danger petit" type="button" id="btn-raz">Effacer cette session</button>
+
+    <div class="groupes">
+      <div class="groupe" role="group" aria-label="Session">
+        <p class="nom-groupe">Session</p>
+        <div class="contenu-groupe">
+          <label>Nom <input class="champ-inline" type="text" id="champ-session-anim" maxlength="40"></label>
+          <label>Moment <select class="champ-inline" id="champ-moment-anim"></select></label>
+          <label>Effectif attendu <input class="champ-inline" type="number" id="champ-effectif" min="1" max="40" placeholder="ex. 8" inputmode="numeric"></label>
+        </div>
+      </div>
+      <div class="groupe" role="group" aria-label="Affichage">
+        <p class="nom-groupe">Affichage</p>
+        <div class="contenu-groupe">
+          <label><input type="checkbox" id="case-comparer"> Comparer les deux moments</label>
+          <label><input type="checkbox" id="case-apercu"> Aperçu privé (tout voir)</label>
+          <button class="btn secondaire petit" type="button" id="btn-plein">Plein écran</button>
+        </div>
+      </div>
+      <div class="groupe" role="group" aria-label="Partager et conserver">
+        <p class="nom-groupe">Partager et conserver</p>
+        <div class="contenu-groupe">
+          <button class="btn secondaire petit" type="button" id="btn-lien">Copier le lien</button>
+          <button class="btn secondaire petit" type="button" id="btn-qr">Télécharger le QR</button>
+          <button class="btn secondaire petit" type="button" id="btn-imprimer">Imprimer ou enregistrer en PDF</button>
+        </div>
+      </div>
+      <div class="groupe" role="group" aria-label="Gestion">
+        <p class="nom-groupe">Gestion</p>
+        <div class="contenu-groupe">
+          <button class="btn secondaire petit" type="button" id="btn-aide">Aide</button>
+          <button class="btn danger petit" type="button" id="btn-raz">Effacer cette session</button>
+        </div>
+      </div>
     </div>
-    <div class="ligne toujours">
-      <div class="etapes" id="etapes" role="group" aria-label="Étapes"></div>
-      <button class="btn secondaire petit" type="button" id="btn-prec">Étape précédente</button>
-      <button class="btn petit" type="button" id="btn-suiv">Étape suivante</button>
-      <span class="compteurs" id="compteurs"></span>
+
+    <div class="deroule">
+      <div class="etapes-grandes" id="etapes" role="group" aria-label="Les 6 étapes de la séance"></div>
+      <div class="rail-info">
+        <div class="rail" aria-hidden="true"><i id="rail-rempli"></i></div>
+        <span id="rail-texte"></span>
+      </div>
+      <div class="nav-etapes">
+        <button class="btn secondaire grand" type="button" id="btn-prec">Étape précédente</button>
+        <button class="btn grand" type="button" id="btn-suiv">Étape suivante</button>
+      </div>
+      <div class="suivi-saisie">
+        <span class="compteurs" id="compteurs"></span>
+        <span class="statut" id="statut" role="status" aria-live="polite"></span>
+      </div>
     </div>
   </div>
 
   <div class="bandeau-prive" id="bandeau-prive" hidden>Affichage privé : tous les résultats sont visibles. Ne projetez pas cet écran.</div>
-  <div class="message erreur" id="message-anim" role="alert" hidden style="margin:1rem 2rem"></div>
+  <div class="message erreur" id="message-anim" role="alert" hidden style="margin:1rem 2.2rem"></div>
 
   <div class="aide-rapide" id="aide-rapide" hidden>
     <strong>Déroulé en un coup d’œil</strong>
     <ol>
-      <li>Étape « Saisie des représentations » : projetez le QR code, attendez que le compteur atteigne l’effectif.</li>
-      <li>Passez à « Les mots », puis « Les métaphores », puis « Les curseurs » : à chaque étape, laissez le groupe commenter (lecture croisée).</li>
-      <li>« Saisie des attentes » : les participants classent leurs priorités et décrivent la situation redoutée.</li>
-      <li>« Synthèse » : portrait collectif et attentes. Imprimez ou enregistrez en PDF pour le retrouver au jour 3.</li>
-      <li>Jour 3 : choisissez « Jour 3 » dans le moment et cochez « Comparer » pour voir l’évolution.</li>
+      <li>Étape 1, « Saisie des représentations » : projetez le QR code et attendez que le compteur atteigne l’effectif.</li>
+      <li>Étapes 2, 3 et 4 : dévoilez les mots, les métaphores puis les curseurs. À chaque étape, laissez le groupe commenter.</li>
+      <li>Étape 5, « Saisie des attentes » : les participants classent leurs priorités et décrivent la situation redoutée.</li>
+      <li>Étape 6, « Synthèse » : portrait collectif et attentes. Imprimez ou enregistrez en PDF pour le retrouver au jour 3.</li>
+      <li>Jour 3 : choisissez « Jour 3 » dans le moment et cochez « Comparer les deux moments ».</li>
     </ol>
     <p style="margin-top:.6rem">Raccourcis : flèches gauche et droite pour changer d’étape, touche C pour masquer les commandes.</p>
   </div>
@@ -83,7 +122,7 @@
   const MI = window.MI, CFG = window.CONFIG, h = MI.h;
   const $ = function (id) { return document.getElementById(id); };
   const MOMENTS = Object.keys(CFG.MOMENTS);
-  const COULEUR_MOMENT = { J1: "#7cc6f5", J3: "#ffd54a" };
+  const COULEUR_MOMENT = { J1: "#5b6478", J3: "#0e7c6b" };
 
   let code = sessionStorage.getItem("mi:code") || "";
   const dep = MI.contexte();
@@ -93,6 +132,13 @@
 
   let tout = null, comparer = false, apercu = false;
   let structCle = null, zones = {}, refCompteur = null, minuteur = null;
+  let verrou = null;                 // étape demandée par l'animateur, tant que le service ne l'a pas confirmée
+  let chaine = Promise.resolve();    // les changements d'étape partent un par un, dans l'ordre
+  let enCours = false;               // une seule demande de rafraîchissement à la fois
+
+  function cleEffectif() { return "mi:effectif:" + session + ":" + moment; }
+  function effectifAttendu() { const n = Number(MI.lire(cleEffectif())); return n >= 1 ? Math.floor(n) : 0; }
+  function statut(texte) { $("statut").textContent = texte || ""; }
 
   // ---------------------------------------------------------------- Connexion
 
@@ -154,6 +200,12 @@
     return document.importNode(doc.documentElement, true);
   }
 
+  function voyant(etat) {
+    $("voyant").className = "voyant " + etat;
+    $("voyant-texte").textContent = etat === "ok" ? "Connecté au service"
+      : etat === "hors" ? "Connexion instable : l’écran garde le dernier affichage" : "Connexion en cours…";
+  }
+
   function message(texte) { const m = $("message-anim"); m.textContent = texte || ""; m.hidden = !texte; }
 
   // ---------------------------------------------------------------- Étapes
@@ -162,37 +214,74 @@
     const zone = $("etapes");
     zone.replaceChildren();
     CFG.ETAPES.forEach(function (nom, i) {
-      zone.append(h("button", { class: "etape-puce", type: "button", "data-i": i, onclick: function () { allerEtape(i); } }, nom));
+      zone.append(h("button", { class: "etape-tuile", type: "button", onclick: function () { allerEtape(i); } },
+        h("span", { class: "num", "aria-hidden": "true" }, String(i + 1)),
+        h("span", { class: "nom" }, nom),
+        h("span", { class: "sous" }, (CFG.ETAPES_SOUS && CFG.ETAPES_SOUS[i]) || "")));
     });
   }
 
   function majBarre() {
-    const e = etapeReelle(), d = donnee(moment);
+    const e = etapeReelle(), d = donnee(moment), n = CFG.ETAPES.length;
     Array.prototype.forEach.call($("etapes").children, function (b, i) {
-      b.className = "etape-puce" + (i === e ? " active" : (i < e ? " faite" : ""));
+      b.className = "etape-tuile" + (i === e ? " active" : (i < e ? " faite" : ""));
       b.setAttribute("aria-current", i === e ? "step" : "false");
+      b.querySelector(".num").textContent = i < e ? "✓" : String(i + 1);
     });
+    $("rail-rempli").style.width = ((e + 1) / n * 100) + "%";
+    $("rail-texte").textContent = "Étape " + (e + 1) + " sur " + n + " : " + CFG.ETAPES[e];
     $("btn-prec").disabled = e <= 0;
-    $("btn-suiv").disabled = e >= CFG.ETAPES.length - 1;
-    $("btn-suiv").textContent = e >= CFG.ETAPES.length - 1 ? "Dernière étape" : "Étape suivante : " + CFG.ETAPES[e + 1];
-    $("compteurs").textContent = d ? ("Saisie 1 : " + d.nbA + " réponses. Saisie 2 : " + d.nbB + " réponses.") : "";
+    $("btn-suiv").disabled = e >= n - 1;
+    $("btn-suiv").textContent = e >= n - 1 ? "Dernière étape" : "Étape suivante : " + CFG.ETAPES[e + 1];
+    const eff = effectifAttendu(), sur = eff ? " sur " + eff : "";
+    const complet = !!(d && eff && ((e === 0 && d.nbA >= eff) || (e === 4 && d.nbB >= eff)));
+    $("compteurs").textContent = d
+      ? "Saisie 1 : " + d.nbA + sur + ". Saisie 2 : " + d.nbB + sur + "." + (complet ? " Tout le monde a répondu." : "")
+      : "";
+    $("compteurs").classList.toggle("complet", complet);
     $("bandeau-prive").hidden = !apercu;
-    $("titre-anim").textContent = CFG.TITRE + " (" + session + ", " + CFG.MOMENTS[moment] + ")";
+    $("titre-h1").textContent = CFG.TITRE;
+    $("pill-session").textContent = "Session " + session + ", " + CFG.MOMENTS[moment];
   }
 
-  async function allerEtape(n) {
+  function allerEtape(n) {
     n = Math.max(0, Math.min(CFG.ETAPES.length - 1, n));
     const d = donnee(moment);
     if (!d || d.etape === n) return;
-    const avant = d.etape;
-    d.etape = n; majBarre(); majProjection();           // affichage immédiat
+
+    // Garde-fou : on ne quitte pas une saisie tant que tout le monde n'a pas répondu (sauf accord)
+    const eff = effectifAttendu();
+    if (eff && n > d.etape && (d.etape === 0 || d.etape === 4)) {
+      const nb = d.etape === 0 ? d.nbA : d.nbB;
+      if (nb < eff && !window.confirm(nb + " personne(s) sur " + eff + " ont répondu. La saisie sera fermée pour les autres. Passer quand même à l’étape suivante ?")) return;
+    }
+
+    // Affichage immédiat, et verrou : aucune réponse du service plus ancienne que ce clic ne pourra l'écraser
+    d.etape = n;
+    verrou = { moment: moment, valeur: n, jusqua: Date.now() + 15000 };
+    statut("Enregistrement de l’étape…");
+    majBarre(); majProjection();
+
+    const ctxSession = session, ctxMoment = moment;
+    chaine = chaine.then(function () { return envoyerEtape(ctxSession, ctxMoment, n); });
+  }
+
+  async function envoyerEtape(sess, mom, n) {
+    if (!verrou || verrou.moment !== mom || verrou.valeur !== n) return;   // remplacée par un clic plus récent
     try {
-      const r = await MI.appelPost({ action: "etape", code: code, session: session, moment: moment, etape: n });
+      const r = await MI.appelPost({ action: "etape", code: code, session: sess, moment: mom, etape: n });
       if (!r || !r.ok) throw new Error((r && r.erreur) || "erreur");
+      if (r.etape !== n) throw new Error("etape_non_retenue");
+      if (verrou && verrou.valeur === n) statut("Étape enregistrée");
       message("");
+      rafraichir();
     } catch (e) {
-      d.etape = avant; majBarre(); majProjection();
-      message("Le changement d’étape n’a pas pu être enregistré. Vérifiez la connexion et réessayez.");
+      if (verrou && verrou.valeur === n) verrou = null;
+      statut("");
+      message(e.message === "etape_non_retenue"
+        ? "Le service n’a pas retenu l’étape demandée. Si le problème persiste, relancez la fonction installer() dans Apps Script (voir l’aide)."
+        : "Le changement d’étape n’a pas pu être enregistré. Vérifiez la connexion et réessayez.");
+      rafraichir();
     }
   }
 
@@ -246,7 +335,7 @@
     proj.append(bloc("mots", "Les mots du groupe", CFG.QUESTIONS.mots.titre, "nuage"));
     if (e >= 2) proj.append(bloc("meta", "Les images du manager idéal", CFG.QUESTIONS.metaphore.titre, "murs"));
     if (e >= 3) {
-      const sec = h("section", { class: "section-resultats" }, h("h2", null, "Où le groupe place ses curseurs"), h("p", { class: "meta" }, "Chaque rond est une réponse. Le triangle indique la moyenne du groupe."));
+      const sec = h("section", { class: "section-resultats" }, h("h2", null, "Où le groupe place ses curseurs"), h("p", { class: "meta" }, "Chaque rond est une réponse. Le chiffre à chaque extrémité indique combien de personnes penchent de ce côté : il n’y avait pas de position neutre."));
       zones.cur = h("div");
       sec.append(zones.cur);
       proj.append(sec);
@@ -256,7 +345,10 @@
   function remplir(e) {
     const ms = comparer ? MOMENTS : [moment];
     const dc = donnee(moment);
-    if (refCompteur && dc) refCompteur.textContent = e === 0 ? dc.nbA : dc.nbB;
+    if (refCompteur && dc) {
+      const eff = effectifAttendu(), nb = e === 0 ? dc.nbA : dc.nbB;
+      refCompteur.textContent = eff ? nb + " / " + eff : String(nb);
+    }
 
     ms.forEach(function (m) {
       const d = donnee(m) || { A: [], B: [] };
@@ -269,7 +361,7 @@
     if (zones.cur) {
       MI.rendreCurseurs(zones.cur, ms.map(function (m) {
         const d = donnee(m) || { A: [] };
-        return { nom: CFG.MOMENTS[m], couleur: comparer ? COULEUR_MOMENT[m] || "#ffd54a" : "#ffd54a", valeurs: MI.valeursCurseurs(d.A) };
+        return { nom: CFG.MOMENTS[m], couleur: COULEUR_MOMENT[m] || "#0e7c6b", valeurs: MI.valeursCurseurs(d.A) };
       }));
     }
     if (zones.portrait && dc) {
@@ -296,24 +388,52 @@
 
   // ---------------------------------------------------------------- Synchronisation
 
+  /** Cadence : rapide seulement quand on attend des réponses, lente le reste du temps. */
+  function delaiSuivant() {
+    const d = donnee(moment);
+    if (!d) return 2000;
+    const e = d.etape, eff = effectifAttendu();
+    if (e !== 0 && e !== 4) return 12000;
+    const nb = e === 0 ? d.nbA : d.nbB;
+    return (eff && nb >= eff) ? 12000 : 3000;
+  }
+  function planifier() {
+    clearTimeout(minuteur);
+    minuteur = setTimeout(function () { if (document.hidden) planifier(); else rafraichir(); }, delaiSuivant());
+  }
+
   async function rafraichir() {
+    if (enCours || !code) return;
+    enCours = true;
     try {
       const r = await MI.appelPost({ action: "admin_donnees", code: code, session: session });
       if (!r || !r.ok) {
         if (r && r.erreur === "code_invalide") { deconnecter("Code d’accès refusé. Reconnectez-vous."); return; }
         throw new Error((r && r.erreur) || "erreur");
       }
+      // Tant que le service n'a pas confirmé l'étape demandée, la valeur demandée prime sur sa réponse
+      if (verrou) {
+        const d = r.parMoment[verrou.moment];
+        if (d && d.etape === verrou.valeur) { verrou = null; statut("Étape enregistrée"); }
+        else if (d && Date.now() < verrou.jusqua) d.etape = verrou.valeur;
+        else if (d) {
+          message("Le service n’a pas retenu l’étape demandée (il indique « " + CFG.ETAPES[d.etape] + " »). Vérifiez le déploiement du script (voir l’aide).");
+          verrou = null; statut("");
+        }
+      }
       tout = r;
-      $("voyant").className = "lien";
-      message("");
+      voyant("ok");
       majBarre(); majProjection();
     } catch (e) {
-      $("voyant").className = "lien hors";
+      voyant("hors");
+    } finally {
+      enCours = false;
+      planifier();
     }
   }
 
   function deconnecter(texte) {
-    clearInterval(minuteur);
+    clearTimeout(minuteur);
     sessionStorage.removeItem("mi:code"); code = "";
     $("vue-principale").hidden = true; $("vue-connexion").hidden = false;
     erreurConnexion(texte || "");
@@ -322,8 +442,9 @@
   function changerContexte() {
     MI.ecrire("mi:anim:session", session); MI.ecrire("mi:anim:moment", moment);
     history.replaceState(null, "", "?session=" + encodeURIComponent(session) + "&moment=" + moment);
-    tout = null; structCle = null;
+    tout = null; structCle = null; verrou = null; statut(""); voyant("attente");
     $("champ-session-anim").value = session; $("champ-moment-anim").value = moment;
+    $("champ-effectif").value = effectifAttendu() || "";
     majBarre(); majProjection(); rafraichir();
   }
 
@@ -331,14 +452,17 @@
     $("vue-connexion").hidden = true; $("vue-principale").hidden = false;
     construireEtapes();
     changerContexte();
-    clearInterval(minuteur);
-    minuteur = setInterval(function () { if (!document.hidden) rafraichir(); }, 4000);
   }
 
   // ---------------------------------------------------------------- Commandes
 
   $("champ-session-anim").addEventListener("change", function (e) { session = MI.nettoyerSession(e.target.value); changerContexte(); });
   $("champ-moment-anim").addEventListener("change", function (e) { moment = e.target.value; changerContexte(); });
+  $("champ-effectif").addEventListener("change", function (e) {
+    const n = Math.max(0, Math.min(40, Math.floor(Number(e.target.value)) || 0));
+    MI.ecrire(cleEffectif(), String(n)); e.target.value = n || "";
+    majBarre(); majProjection(); planifier();
+  });
   $("case-comparer").addEventListener("change", function (e) { comparer = e.target.checked; majProjection(); });
   $("case-apercu").addEventListener("change", function (e) { apercu = e.target.checked; majBarre(); majProjection(); });
   $("btn-prec").addEventListener("click", function () { allerEtape(etapeReelle() - 1); });
@@ -388,6 +512,8 @@
     else if (ev.key === "ArrowLeft") allerEtape(etapeReelle() - 1);
     else if (ev.key === "c" || ev.key === "C") basculerProjection();
   });
+
+  document.addEventListener("visibilitychange", function () { if (!document.hidden && code) rafraichir(); });
 
   // Reconnexion automatique si le code est déjà mémorisé pour cet onglet
   if (code) {

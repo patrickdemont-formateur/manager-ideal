@@ -8,7 +8,7 @@
  * À NE PAS CHANGER entre le jour 1 et le jour 3 : les libellés des priorités (la comparaison s’appuie dessus).
  */
 window.CONFIG = {
-  APPS_SCRIPT_URL: "https://script.google.com/macros/s/AKfycbzlxXZ4BcgG4-pIL8w10_fID-SJlb4ntNXqIYJDt08FbuyJ79pURId0Uy_1Qw_36MGJ9Q/exec",
+  APPS_SCRIPT_URL: "https://script.google.com/macros/s/AKfycbxlKlNNaUNSB0kzXTl1RYKiU4B_z42El6dh75Uo2YtAZuGQjPPKE6WmoLXcMWNKj68a6g/exec",
 
   TITRE: "Le manager idéal, vu par nous",
   SOUS_TITRE: "Manager pour la première fois",
